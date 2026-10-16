@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GeoFS Excrafts
-// @version      1.7
+// @version      1.8
 // @description  Adds custom aircraft to GeoFS from geofs-excrafts
 // @author       747400forlife
 // @match        https://www.geo-fs.com/geofs.php*
@@ -81,6 +81,11 @@
     }
 
     function loadAircraftFromUrl(baseUrl, mpID, name, broadcastId) {
+        // Ensure trailing slash on folder path
+        if (!baseUrl.endsWith("/")) {
+            baseUrl += "/";
+        }
+
         $.ajax(baseUrl + "aircraft.json", {
             dataType: "text",
             success: function (jsonText) {
@@ -92,7 +97,7 @@
                     isCommunity: false,
                     definition: btoa(jsonText),
                     multiplayerFiles: [
-                        baseUrl + "airbus_a310_mrtt.glb" // Directly references your exact model filename
+                        baseUrl + "airbus_a310_mrtt.glb"
                     ]
                 };
 
@@ -127,7 +132,6 @@
         }
     });
 
-    // Attempt to load vehicles.json from GitHub, with hardcoded fallback
     fetch(DATA_URL)
         .then(response => response.json())
         .then(data => {
