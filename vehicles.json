@@ -1,0 +1,10 @@
+{
+  "Custom Airliners": [
+    {
+      "name": "Airbus A310 MRTT",
+      "url": "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/a310/",
+      "mpid": "1024",
+      "mp": "addon"
+    }
+  ]
+}
