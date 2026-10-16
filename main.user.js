@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         GeoFS Excrafts Importer
+// @name         GeoFS Excrafts
 // @version      1.0
-// @description  Imports custom aircraft into GeoFS from geofs-excrafts
-// @author       YourName
+// @description  Adds custom aircraft to GeoFS from geofs-excrafts
+// @author       747400forlife
 // @match        https://www.geo-fs.com/geofs.php*
 // @match        https://*.geo-fs.com/geofs.php*
 // @grant        none
@@ -12,10 +12,8 @@
     'use strict';
     console.log("Excrafts script running...");
 
-    // URL to your aircraft manifest on GitHub
-    const DATA_URL = "https://raw.githubusercontent.com/YourUsername/geofs-excrafts/main/aircraft.json";
+    const DATA_URL = "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/vehicles.json";
 
-    // Clone the native GeoFS aircraft button to match layout and font
     const aircraftButton = document.querySelector('button[data-toggle-panel=".geofs-aircraft-list"]');
     if (!aircraftButton) {
         console.warn("Aircraft button not found.");
@@ -25,13 +23,12 @@
     const extrasButton = aircraftButton.cloneNode(true);
     extrasButton.textContent = "Excrafts";
     extrasButton.removeAttribute("data-toggle-panel");
-    extrasButton.setAttribute("data-toggle-panel", ".geofs-excrafts-list");
-    extrasButton.id = "excrafts-button";
+    extrasButton.setAttribute("data-toggle-panel", ".geofs-extras-list");
+    extrasButton.id = "extras-button";
     aircraftButton.parentNode.insertBefore(extrasButton, aircraftButton);
 
-    // Create the dropdown panel using native GeoFS classes for consistent styling
     const extrasPanel = document.createElement("ul");
-    extrasPanel.className = "geofs-list geofs-excrafts-list geofs-toggle-panel";
+    extrasPanel.className = "geofs-list geofs-extras-list geofs-toggle-panel";
 
     extrasPanel.innerHTML = `
         <div style="display: flex; align-items: center; gap: 10px; padding-left: 20px;">
@@ -54,11 +51,25 @@
 
         items.forEach(item => {
             const li = document.createElement("li");
-            li.setAttribute("data-url", item.modelUrl);
-            li.setAttribute("data-mpid", item.id || "1000");
+            li.setAttribute("data-url", item.url);
+            li.setAttribute("data-mpid", item.mpid);
+            if (item.mp === "addon" && item.mpid) { 
+                li.setAttribute("data-broadcast-id", item.mpid); 
+            }
 
             const itemContent = document.createElement("span");
             itemContent.textContent = item.name;
+
+            if (item.mp === "addon") {
+                geofs.aircraftList[item.mpid] = {
+                    id: item.mpid,
+                    community: 1,
+                    multiplayerFiles: "",
+                    name: item.name,
+                    path: item.url
+                };
+            }
+
             li.appendChild(itemContent);
             sublist.appendChild(li);
         });
@@ -67,59 +78,78 @@
         return category;
     }
 
-    function loadAircraftFromUrl(modelUrl, name) {
-        console.log(`[Excrafts] Loading ${name} from ${modelUrl}`);
-        
-        if (!window.geofs || !window.geofs.aircraft || !window.geofs.aircraft.instance) {
-            console.error("[Excrafts] Aircraft instance unavailable.");
-            return;
-        }
+    function loadAircraftFromUrl(baseUrl, mpID, name, broadcastId) {
+        $.ajax(baseUrl + "aircraft.json", {
+            dataType: "text",
+            success: function (jsonText) {
+                var customRecord = {
+                    id: mpID,
+                    name: name,
+                    fullPath: baseUrl,
+                    isPremium: false,
+                    isCommunity: false,
+                    definition: btoa(jsonText),
+                    multiplayerFiles: [
+                        baseUrl + "airbus_a310_mrtt.glb"
+                    ]
+                };
 
-        // Hide default model and load custom .glb model
-        if (geofs.aircraft.instance.definition && geofs.aircraft.instance.definition.model) {
-            geofs.aircraft.instance.definition.model.setVisibility(false);
-        }
+                var parsedDefinition = geofs.aircraft.instance.parseRecord(JSON.stringify(customRecord));
 
-        let customModel = new geofs.api.Model({
-            url: modelUrl,
-            scale: 1,
-            minimumPixelSize: 1
+                if (parsedDefinition) {
+                    geofs.aircraft.instance.unloadAircraft();
+                    geofs.aircraft.instance.fullPath = customRecord.fullPath;
+                    geofs.aircraft.instance.aircraftRecord = customRecord;
+                    geofs.aircraft.instance.init(parsedDefinition, geofs.aircraft.instance.getCurrentCoordinates());
+
+                    geofs.aircraft.instance.geofsExtrasBroadcastId = broadcastId || null;
+                    geofs.aircraft.instance.geofsExtrasBroadcastOwnerId = broadcastId ? mpID : null;
+                } else {
+                    ui.notification.show("Failed to parse aircraft.json");
+                }
+            },
+            error: function () {
+                ui.notification.show("Could not load aircraft.json");
+            }
         });
-
-        geofs.aircraft.instance.definition.model = customModel;
-        customModel.setLocation(geofs.aircraft.instance.llaLocation, geofs.aircraft.instance.htr);
-        
-        if (ui && ui.notification) {
-            ui.notification.show(`Loaded ${name}`);
-        }
     }
 
-    // Event listener for clicking items inside your custom panel
     extrasPanel.addEventListener("click", function (e) {
         const li = e.target.closest("li[data-url]");
         if (li) {
-            const modelUrl = li.getAttribute("data-url");
-            const name = li.textContent;
-            loadAircraftFromUrl(modelUrl, name);
+            const url = li.getAttribute("data-url");
+            const mpID = li.getAttribute("data-mpid");
+            const broadcastId = li.getAttribute("data-broadcast-id");
+            const name = li.textContent || li.innerText;
+            loadAircraftFromUrl(url, mpID, name, broadcastId);
         }
     });
 
-    // Fetch your GitHub manifest and populate the menu
+    // Fetch from GitHub repository, with fallback to hardcoded A310 if fetch fails
     fetch(DATA_URL)
         .then(response => response.json())
         .then(data => {
-            // Assuming your JSON groups items by categories or is a flat list
-            if (Array.isArray(data)) {
-                const section = createCategorySection("Custom Aircraft", data);
+            for (const [category, items] of Object.entries(data)) {
+                const section = createCategorySection(category, items);
                 extrasPanel.appendChild(section);
-            } else {
-                for (const [category, items] of Object.entries(data)) {
-                    const section = createCategorySection(category, items);
-                    extrasPanel.appendChild(section);
-                }
             }
         })
         .catch(error => {
-            console.error("Error loading Excrafts data:", error);
+            console.warn("Could not fetch remote vehicles.json, loading local fallback.");
+            const fallbackData = {
+                "Custom Excrafts": [
+                    {
+                        name: "Airbus A310 MRTT",
+                        url: "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/a310/",
+                        mpid: "1024",
+                        mp: "addon"
+                    }
+                ]
+            };
+            for (const [category, items] of Object.entries(fallbackData)) {
+                const section = createCategorySection(category, items);
+                extrasPanel.appendChild(section);
+            }
         });
+
 })();
