@@ -136,7 +136,7 @@
             "Airliners": [
                 {
                     name: "Airbus A310 MRTT",
-                    url: "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/a310/",
+                    url: "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/airbus_a310_mrtt.glb/",
                     mpid: "1024"
                 }
             ]
