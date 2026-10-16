@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GeoFS Excrafts
-// @version      1.2
+// @version      1.3
 // @description  Adds custom aircraft to GeoFS from geofs-excrafts
 // @author       747400forlife
 // @match        https://www.geo-fs.com/geofs.php*
@@ -12,13 +12,12 @@
     'use strict';
 
     function initExcrafts() {
-        // Prevent duplicate injection if script runs twice
         if (document.getElementById("excrafts-button")) return;
 
         const aircraftButton = document.querySelector('button[data-toggle-panel=".geofs-aircraft-list"]');
         if (!aircraftButton) return;
 
-        // 1. Create Clean Bottom Bar Button
+        // 1. Create bottom bar button
         const excraftsButton = document.createElement("button");
         excraftsButton.id = "excrafts-button";
         excraftsButton.className = "mdl-button mdl-js-button geofs-f-o";
@@ -28,34 +27,32 @@
 
         aircraftButton.parentNode.insertBefore(excraftsButton, aircraftButton.nextSibling);
 
-        // 2. Create Panel Container
+        // 2. Create list panel
         const extrasPanel = document.createElement("ul");
         extrasPanel.className = "geofs-list geofs-excrafts-list geofs-toggle-panel";
         extrasPanel.style.display = "none";
-
-        // Panel Title (Only visible inside the opened menu)
-        const headerLi = document.createElement("li");
-        headerLi.innerHTML = `<h4 style="margin: 10px 0 10px 20px;">GeoFS Excrafts</h4>`;
-        extrasPanel.appendChild(headerLi);
 
         const aircraftPanel = document.querySelector(".geofs-aircraft-list");
         if (aircraftPanel && aircraftPanel.parentNode) {
             aircraftPanel.parentNode.insertBefore(extrasPanel, aircraftPanel.nextSibling);
         }
 
-        // 3. Helper to Build Category & Subitems
+        // 3. Build expandable category items
         function createCategorySection(title, items) {
             const category = document.createElement("li");
             category.className = "geofs-list-collapsible-item";
-            category.textContent = title;
+            category.innerHTML = `<span style="cursor:pointer; font-weight:bold;">${title}</span>`;
 
             const sublist = document.createElement("ul");
             sublist.className = "geofs-collapsible";
+            sublist.style.display = "block"; // Keep expanded by default
 
             items.forEach(item => {
                 const li = document.createElement("li");
                 li.setAttribute("data-url", item.url);
                 li.setAttribute("data-mpid", item.mpid);
+                li.style.cursor = "pointer";
+                li.style.padding = "5px 15px";
 
                 const itemContent = document.createElement("span");
                 itemContent.textContent = item.name;
@@ -75,10 +72,17 @@
             });
 
             category.appendChild(sublist);
+
+            // Toggle sublist expansion on category header click
+            category.querySelector("span").addEventListener("click", function(e) {
+                e.stopPropagation();
+                sublist.style.display = sublist.style.display === "none" ? "block" : "none";
+            });
+
             return category;
         }
 
-        // 4. Load Function (Parses physics JSON & .glb)
+        // 4. Load aircraft definition and model
         function loadAircraftFromUrl(baseUrl, mpID, name) {
             if (typeof $ === "undefined") return;
 
@@ -102,7 +106,7 @@
                         geofs.aircraft.instance.fullPath = customRecord.fullPath;
                         geofs.aircraft.instance.aircraftRecord = customRecord;
                         geofs.aircraft.instance.init(parsedDefinition, geofs.aircraft.instance.getCurrentCoordinates());
-                        
+
                         if (window.ui && ui.notification) {
                             ui.notification.show("Loaded " + name);
                         }
@@ -111,12 +115,12 @@
                     }
                 },
                 error: function () {
-                    if (window.ui && ui.notification) ui.notification.show("Could not load aircraft.json");
+                    if (window.ui && ui.notification) ui.notification.show("Could not load aircraft.json from " + baseUrl);
                 }
             });
         }
 
-        // 5. Click Handler for Menu Items
+        // 5. Handle clicks on individual aircraft entries
         extrasPanel.addEventListener("click", function (e) {
             const li = e.target.closest("li[data-url]");
             if (li) {
@@ -127,7 +131,7 @@
             }
         });
 
-        // 6. Populate Local List
+        // 6. Hardcoded aircraft definition
         const localData = {
             "Airliners": [
                 {
@@ -144,7 +148,6 @@
         }
     }
 
-    // Wait until GeoFS UI element is fully loaded before building the menu
     const checkInterval = setInterval(() => {
         if (document.querySelector('button[data-toggle-panel=".geofs-aircraft-list"]')) {
             clearInterval(checkInterval);
