@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GeoFS Excrafts
-// @version      1.0
+// @version      1.1
 // @description  Adds custom aircraft to GeoFS from geofs-excrafts
 // @author       747400forlife
 // @match        https://www.geo-fs.com/geofs.php*
@@ -11,8 +11,6 @@
 (function () {
     'use strict';
     console.log("Excrafts script running...");
-
-    const DATA_URL = "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/vehicles.json";
 
     const aircraftButton = document.querySelector('button[data-toggle-panel=".geofs-aircraft-list"]');
     if (!aircraftButton) {
@@ -125,31 +123,21 @@
         }
     });
 
-    // Fetch from GitHub repository, with fallback to hardcoded A310 if fetch fails
-    fetch(DATA_URL)
-        .then(response => response.json())
-        .then(data => {
-            for (const [category, items] of Object.entries(data)) {
-                const section = createCategorySection(category, items);
-                extrasPanel.appendChild(section);
+    // Hardcoded local list to ensure menu items appear immediately
+    const localData = {
+        "Airliners": [
+            {
+                name: "Airbus A310 MRTT",
+                url: "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/a310/",
+                mpid: "1024",
+                mp: "addon"
             }
-        })
-        .catch(error => {
-            console.warn("Could not fetch remote vehicles.json, loading local fallback.");
-            const fallbackData = {
-                "Custom Excrafts": [
-                    {
-                        name: "Airbus A310 MRTT",
-                        url: "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/a310/",
-                        mpid: "1024",
-                        mp: "addon"
-                    }
-                ]
-            };
-            for (const [category, items] of Object.entries(fallbackData)) {
-                const section = createCategorySection(category, items);
-                extrasPanel.appendChild(section);
-            }
-        });
+        ]
+    };
+
+    for (const [category, items] of Object.entries(localData)) {
+        const section = createCategorySection(category, items);
+        extrasPanel.appendChild(section);
+    }
 
 })();
