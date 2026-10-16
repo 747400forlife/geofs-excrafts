@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         GeoFS Excrafts
-// @version      1.8
+// @version      2.0
 // @description  Adds custom aircraft to GeoFS from geofs-excrafts
 // @author       747400forlife
 // @match        https://www.geo-fs.com/geofs.php*
@@ -10,35 +10,36 @@
 
 (function () {
     'use strict';
-    console.log("Excrafts script running...");
+
+    if (document.getElementById("excrafts-button")) return;
 
     const DATA_URL = "https://raw.githubusercontent.com/747400forlife/geofs-excrafts/main/vehicles.json";
 
     const aircraftButton = document.querySelector('button[data-toggle-panel=".geofs-aircraft-list"]');
-    if (!aircraftButton) {
-        console.warn("Aircraft button not found.");
-        return;
-    }
+    if (!aircraftButton) return;
 
-    const extrasButton = aircraftButton.cloneNode(true);
-    extrasButton.textContent = "Excrafts";
-    extrasButton.removeAttribute("data-toggle-panel");
-    extrasButton.setAttribute("data-toggle-panel", ".geofs-extras-list");
-    extrasButton.id = "extras-button";
-    aircraftButton.parentNode.insertBefore(extrasButton, aircraftButton);
+    // 1. Clean Toolbar Button
+    const excraftsButton = aircraftButton.cloneNode(true);
+    excraftsButton.textContent = "EXCRAFTS";
+    excraftsButton.removeAttribute("data-toggle-panel");
+    excraftsButton.setAttribute("data-toggle-panel", ".geofs-excrafts-list");
+    excraftsButton.id = "excrafts-button";
+    
+    aircraftButton.parentNode.insertBefore(excraftsButton, aircraftButton.nextSibling);
 
-    const extrasPanel = document.createElement("ul");
-    extrasPanel.className = "geofs-list geofs-extras-list geofs-toggle-panel";
+    // 2. Panel without logos/images
+    const excraftsPanel = document.createElement("ul");
+    excraftsPanel.className = "geofs-list geofs-excrafts-list geofs-toggle-panel";
 
-    extrasPanel.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px; padding-left: 20px;">
-            <h4 style="margin: 0;">GeoFS Excrafts</h4>
+    excraftsPanel.innerHTML = `
+        <div style="padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <h4 style="margin: 0; font-size: 16px;">GeoFS Excrafts</h4>
         </div>
     `;
 
     const aircraftPanel = document.querySelector(".geofs-aircraft-list");
     if (aircraftPanel && aircraftPanel.parentNode) {
-        aircraftPanel.parentNode.insertBefore(extrasPanel, aircraftPanel.nextSibling);
+        aircraftPanel.parentNode.insertBefore(excraftsPanel, aircraftPanel.nextSibling);
     }
 
     function createCategorySection(title, items) {
@@ -81,7 +82,6 @@
     }
 
     function loadAircraftFromUrl(baseUrl, mpID, name, broadcastId) {
-        // Ensure trailing slash on folder path
         if (!baseUrl.endsWith("/")) {
             baseUrl += "/";
         }
@@ -121,7 +121,7 @@
         });
     }
 
-    extrasPanel.addEventListener("click", function (e) {
+    excraftsPanel.addEventListener("click", function (e) {
         const li = e.target.closest("li[data-url]");
         if (li) {
             const url = li.getAttribute("data-url");
@@ -137,7 +137,7 @@
         .then(data => {
             for (const [category, items] of Object.entries(data)) {
                 const section = createCategorySection(category, items);
-                extrasPanel.appendChild(section);
+                excraftsPanel.appendChild(section);
             }
         })
         .catch(error => {
@@ -154,7 +154,7 @@
             };
             for (const [category, items] of Object.entries(fallbackData)) {
                 const section = createCategorySection(category, items);
-                extrasPanel.appendChild(section);
+                excraftsPanel.appendChild(section);
             }
         });
 
